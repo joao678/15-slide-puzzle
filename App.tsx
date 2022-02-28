@@ -34,7 +34,11 @@ const styles = StyleSheet.create({
   }
 });
 
+let jaEstaMovendo = false;
+
 const renderGridItem = ({item, index, separators}, refresh, setRefresh) => {
+  if(item === -1) return <View style={{...styles.item}}></View>;
+  
   const state = {
       pan: new Animated.ValueXY()
   };
@@ -44,58 +48,93 @@ const renderGridItem = ({item, index, separators}, refresh, setRefresh) => {
     ...styles.item
   }
 
-  let x = 0;
-  let y = 0;
-  let podeMover = false;
-  let podeMoverDireita = false;
-  let podeMoverEsquerda = false;
-  let podeMoverBaixo = false;
-  let podeMoverCima = false;
+  let indexX = 0,
+    indexY = 0,
+    podeMover = false,
+    podeMoverDireita = false,
+    podeMoverEsquerda = false,
+    podeMoverBaixo = false,
+    podeMoverCima = false;
 
   gridData.forEach((row, rowIndex) => {
     const itemEncontrado = row.findIndex(e => e === item);
+
     if(itemEncontrado !== -1) {
-      y = rowIndex;
-      x = itemEncontrado;
+      indexY = rowIndex;
+      indexX = itemEncontrado;
     }
   });
   
-  if(gridData[y][x+1] === -1) {
+  if(gridData[indexY][indexX+1] === -1) {
     podeMover = true;
     podeMoverDireita = true;
   }
 
-  if(gridData[y][x-1] === -1) {
+  if(gridData[indexY][indexX-1] === -1) {
     podeMover = true;
-    podeMoverEsquerda = false;
+    podeMoverEsquerda = true;
   }
 
-  if(gridData[y+1]) {
-    if(gridData[y+1][x] === -1) {
+  if(gridData[indexY+1]) {
+    if(gridData[indexY+1][indexX] === -1) {
       podeMover = true;
       podeMoverBaixo = true;
     }
   }
   
-  if(gridData[y-1]) {
-    if(gridData[y-1][x] === -1) {
+  if(gridData[indexY-1]) {
+    if(gridData[indexY-1][indexX] === -1) {
       podeMover = true;
       podeMoverCima = true;
     }  
   }
-  
+
   const panResponder = PanResponder.create({
-      onStartShouldSetPanResponder: () => podeMover,
+      onStartShouldSetPanResponder: () => podeMover && !jaEstaMovendo,
 
       onPanResponderMove: function (evt, gestureState) {
         Animated.event([null,{
           dx: (podeMoverEsquerda || podeMoverDireita) ? state.pan.x : new Animated.ValueXY().x,
           dy: (podeMoverBaixo || podeMoverCima) ? state.pan.y : new Animated.ValueXY().y
         }], { useNativeDriver: false })(...arguments);
+        jaEstaMovendo = true;
       },
       
       onPanResponderRelease: (e, gesture) => {
-        console.log(gesture.dx);
+        if(Math.abs(gesture.dy) > 60 || Math.abs(gesture.dx) > 60) {
+          let posicaoInvalidaX = 0;
+          let posicaoInvalidaY = 0;
+
+          gridData.forEach((row, rowIndex) => {
+            const itemEncontrado = row.findIndex(e => e === -1);
+            if(itemEncontrado === -1) return;
+            posicaoInvalidaY = rowIndex;
+            posicaoInvalidaX = itemEncontrado;
+          });
+          
+          gridData[posicaoInvalidaY][posicaoInvalidaX] = item;
+          gridData[indexY][indexX] = -1;
+
+          flatListItemsStates.forEach((state, index) => {
+            Animated.timing(
+                state.pan, {
+                duration: 1,
+                toValue: { x:0, y:0 },
+                easing: Easing.linear(Easing.linear),
+                useNativeDriver: false
+              }
+            ).start(({finished}) => {
+              if(index == flatListItemsStates.length-1 && finished) {
+                flatListItemsStates = [];
+                setRefresh(!refresh);
+                jaEstaMovendo = false;
+              }
+            });
+          });
+
+          return true;
+        };
+
         flatListItemsStates.forEach((item, index) => {
           const state = item;
 
@@ -109,6 +148,7 @@ const renderGridItem = ({item, index, separators}, refresh, setRefresh) => {
             if(index == flatListItemsStates.length-1 && finished) {
               flatListItemsStates = [];
               setRefresh(!refresh);
+              jaEstaMovendo = false;
             }
           });
         });
@@ -120,14 +160,14 @@ const renderGridItem = ({item, index, separators}, refresh, setRefresh) => {
       style={{
         transform: [{
             translateX: state.pan.x.interpolate({
-                inputRange: [podeMoverEsquerda ? -63 : 0 ,0, podeMoverDireita ? 63 : 0],
-                outputRange: [podeMoverEsquerda ? -63 : 0, 0, podeMoverDireita ? 63 : 0],
+                inputRange: [(podeMoverEsquerda ? -60 : 0), 0, (podeMoverDireita ? 60 : 0)],
+                outputRange: [(podeMoverEsquerda ? -60 : 0), 0, (podeMoverDireita ? 60 : 0)],
                 extrapolate: 'clamp'
             })
         }, {
             translateY: state.pan.y.interpolate({
-              inputRange: [podeMoverCima ? -63: 0, 0, podeMoverBaixo ? 63 : 0],
-              outputRange: [podeMoverCima ? -63: 0, 0, podeMoverBaixo ? 63 : 0],
+              inputRange: [(podeMoverCima ? -60: 0), 0, (podeMoverBaixo ? 60 : 0)],
+              outputRange: [(podeMoverCima ? -60: 0), 0, (podeMoverBaixo ? 60 : 0)],
               extrapolate: 'clamp'
             })
         }]
@@ -142,7 +182,7 @@ const renderGridItem = ({item, index, separators}, refresh, setRefresh) => {
   return listItem;
 };
 
-const gridData = [
+let gridData = [
   [1,2,3,4],
   [5,6,7,8],
   [9,10,11,12],
@@ -155,7 +195,7 @@ let flatListItemsStates = [];
 
 const App: () => Node = () => {
   const isDarkMode = useColorScheme() === 'dark';
-  const [refresh, setRefresh] = useState(true);
+  const [refresh, setRefresh] = useState(false);
 
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
