@@ -18,6 +18,7 @@ import {
   View,
   PanResponder,
   Animated,
+  Alert
 } from 'react-native';
 
 import { Colors } from 'react-native/Libraries/NewAppScreen';
@@ -35,6 +36,37 @@ const styles = StyleSheet.create({
 });
 
 let jaEstaMovendo = false;
+let flatListItemsStates = [];
+let gridData = [];
+
+function randomNumber(min, max) {
+  return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+function novoJogo() {
+  gridData = [];
+  function gerarNumero() {
+    const numRandom = randomNumber(1, 15);
+    if(sequencia.find((e) => e === numRandom)){
+      gerarNumero();
+      return;
+    };
+    sequencia.push(numRandom);
+  }
+  
+  const sequencia = [randomNumber(1, 15)];
+  
+  while(sequencia.length !== 15) {
+    gerarNumero();
+  }
+  
+  for (let index = 0; index < 4; index++) {
+    gridData.push(sequencia.slice(index*4, (index*4+4)));
+  }
+  gridData[3][3] = -1;
+}
+
+novoJogo();
 
 const renderGridItem = ({ item, index, separators }, refresh, setRefresh) => {
   if (item === -1) return <View style={{ ...styles.item }}></View>;
@@ -128,6 +160,11 @@ const renderGridItem = ({ item, index, separators }, refresh, setRefresh) => {
               flatListItemsStates = [];
               setRefresh(!refresh);
               jaEstaMovendo = false;
+
+              if(gridData.flat().join('') === [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,-1].join('')) {
+                Alert.alert("Parabéns!", "Você venceu!");
+                novoJogo();
+              }
             }
           });
         });
@@ -181,17 +218,6 @@ const renderGridItem = ({ item, index, separators }, refresh, setRefresh) => {
 
   return listItem;
 };
-
-let gridData = [
-  [1, 2, 3, 4],
-  [5, 6, 7, 8],
-  [9, 10, 11, 12],
-  [13, 14, 15, 16]
-];
-
-gridData[3][3] = -1;
-
-let flatListItemsStates = [];
 
 const App: () => Node = () => {
   const isDarkMode = useColorScheme() === 'dark';
