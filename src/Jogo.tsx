@@ -9,8 +9,7 @@ import {
     View,
     PanResponder,
     Animated,
-    Alert,
-    Button
+    Alert
 } from 'react-native';
 
 import { Colors } from 'react-native/Libraries/NewAppScreen';
@@ -57,12 +56,8 @@ const blocoStyle = {
     margin: 5
 };
 
-const renderGridItem = ({item: blocoAtual, index, separators}, refresh, setRefresh) => {
+const renderGridItem = ({item: blocoAtual, index, separators}, grid, setGrid) => {
     if (blocoAtual === -1) return <View style={{...blocoStyle}}></View>;
-
-    /*const state = {
-        pan: new Animated.ValueXY()
-    };*/
 
     const pan = new Animated.ValueXY();
 
@@ -79,7 +74,7 @@ const renderGridItem = ({item: blocoAtual, index, separators}, refresh, setRefre
         podeMoverBaixo = false,
         podeMoverCima = false;
 
-    gridData.forEach((row, rowIndex) => {
+    grid.forEach((row, rowIndex) => {
         const espacoEmBrancoEncontrado = row.findIndex(e => e === blocoAtual);
 
         if (espacoEmBrancoEncontrado !== -1) {
@@ -88,25 +83,25 @@ const renderGridItem = ({item: blocoAtual, index, separators}, refresh, setRefre
         }
     });
 
-    if (gridData[espacoEmBrancoY][espacoEmBrancoX + 1] === -1) {
+    if (grid[espacoEmBrancoY][espacoEmBrancoX + 1] === -1) {
         podeMover = true;
         podeMoverDireita = true;
     }
 
-    if (gridData[espacoEmBrancoY][espacoEmBrancoX - 1] === -1) {
+    if (grid[espacoEmBrancoY][espacoEmBrancoX - 1] === -1) {
         podeMover = true;
         podeMoverEsquerda = true;
     }
 
-    if (gridData[espacoEmBrancoY + 1]) {
-        if (gridData[espacoEmBrancoY + 1][espacoEmBrancoX] === -1) {
+    if (grid[espacoEmBrancoY + 1]) {
+        if (grid[espacoEmBrancoY + 1][espacoEmBrancoX] === -1) {
             podeMover = true;
             podeMoverBaixo = true;
         }
     }
 
-    if (gridData[espacoEmBrancoY - 1]) {
-        if (gridData[espacoEmBrancoY - 1][espacoEmBrancoX] === -1) {
+    if (grid[espacoEmBrancoY - 1]) {
+        if (grid[espacoEmBrancoY - 1][espacoEmBrancoX] === -1) {
             podeMover = true;
             podeMoverCima = true;
         }
@@ -128,15 +123,15 @@ const renderGridItem = ({item: blocoAtual, index, separators}, refresh, setRefre
                 let posicaoInvalidaX = 0;
                 let posicaoInvalidaY = 0;
 
-                gridData.forEach((row, rowIndex) => {
+                grid.forEach((row, rowIndex) => {
                     const itemEncontrado = row.findIndex(e => e === -1);
                     if (itemEncontrado === -1) return;
                     posicaoInvalidaY = rowIndex;
                     posicaoInvalidaX = itemEncontrado;
                 });
 
-                gridData[posicaoInvalidaY][posicaoInvalidaX] = blocoAtual;
-                gridData[espacoEmBrancoY][espacoEmBrancoX] = -1;
+                grid[posicaoInvalidaY][posicaoInvalidaX] = blocoAtual;
+                grid[espacoEmBrancoY][espacoEmBrancoX] = -1;
 
                 flatListItemsPans.forEach((state, index) => {
                     Animated.timing(
@@ -149,12 +144,13 @@ const renderGridItem = ({item: blocoAtual, index, separators}, refresh, setRefre
                     ).start(({ finished }) => {
                         if (index == flatListItemsPans.length - 1 && finished) {
                             flatListItemsPans = [];
-                            setRefresh(!refresh);
+                            setGrid([...grid]);
                             jaEstaMovendo = false;
 
-                            if (gridData.flat().join('') === [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, -1].join('')) {
+                            if (grid.flat().join('') === [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, -1].join('')) {
                                 Alert.alert("Parabéns!", "Você venceu!");
                                 novoJogo();
+                                setGrid([...gridData]);
                             }
                         }
                     });
@@ -164,18 +160,14 @@ const renderGridItem = ({item: blocoAtual, index, separators}, refresh, setRefre
             };
 
             flatListItemsPans.forEach((item, index) => {
-                const state = item;
-
-                Animated.timing(
-                    pan, {
+                Animated.timing(pan, {
                     toValue: { x: 0, y: 0 },
                     easing: Easing.inOut(Easing.exp),
                     useNativeDriver: false
-                }
-                ).start(({ finished }) => {
+                }).start(({ finished }) => {
                     if (index == flatListItemsPans.length - 1 && finished) {
                         flatListItemsPans = [];
-                        setRefresh(!refresh);
+                        setGrid([...grid]);
                         jaEstaMovendo = false;
                     }
                 });
@@ -212,8 +204,8 @@ const renderGridItem = ({item: blocoAtual, index, separators}, refresh, setRefre
 
 const App: () => Node = () => {
     const isDarkMode = useColorScheme() === 'dark';
-    const [refresh, setRefresh] = useState(false);
-
+    const [grid, setGrid] = useState(gridData);
+    
     const backgroundStyle = {
         backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
         flex: 1, 
@@ -226,9 +218,9 @@ const App: () => Node = () => {
                 style={{ width: 95*4, height: 95*4 }}
                 contentContainerStyle={{flexGrow: 1, justifyContent: 'center'}}
                 numColumns="4"
-                data={gridData.flat()}
-                renderItem={(renderItemArguments) => renderGridItem(renderItemArguments, refresh, setRefresh)}
-                extraData={refresh}
+                data={grid.flat()}
+                renderItem={(renderItemArguments) => renderGridItem(renderItemArguments, grid, setGrid)}
+                extraData={grid.flat()}
             />
         </SafeAreaView>
     );
